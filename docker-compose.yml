@@ -1,0 +1,95 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库服务
+  postgres:
+    image: postgres:15-alpine
+    container_name: safe-access-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: safe_access_db
+      POSTGRES_USER: safe_user
+      POSTGRES_PASSWORD: safe_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    ports:
+      - "10086:5432"
+    networks:
+      - safe-access-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safe_user -d safe_access_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Next.js 应用服务
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    platform: linux/amd64
+    container_name: safe-access-app
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DB_HOST=safe-access-db
+      - DB_PORT=5432
+      - DB_NAME=safe_access_db
+      - DB_USER=safe_user
+      - DB_PASSWORD=safe_password
+      - JWT_SECRET=your_jwt_secret_key_change_this_in_production
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123_change_this_in_production}
+      - NEXT_PUBLIC_APP_URL=http://localhost/
+      # 日志系统配置
+      - LOG_DIR=/app/logs
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_MAX_SIZE=${LOG_MAX_SIZE:-100m}
+      - LOG_MAX_FILES=${LOG_MAX_FILES:-30d}
+      # 配置系统环境变量
+      - WORK_TYPE_OPTIONS=${WORK_TYPE_OPTIONS:-quality_rework,product_work,maintenance,inspection,other}
+      - DANGER_TYPE_OPTIONS=${DANGER_TYPE_OPTIONS:-high_altitude,confined_space,hot_work,electrical,chemical,radiation,lifting,excavation}
+      - WORK_BASIS_OPTIONS=${WORK_BASIS_OPTIONS:-ncr,design_change,nonconformity,maintenance_plan,inspection_plan}
+      - DEPARTMENT_OPTIONS=${DEPARTMENT_OPTIONS:-quality,production,maintenance,engineering,safety,administration}
+      - POSITION_OPTIONS=${POSITION_OPTIONS:-engineer,technician,supervisor,manager,operator,inspector}
+    ports:
+      - "80:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - app-logs:/app/logs
+    networks:
+      - safe-access-network
+
+  # Redis 缓存服务（可选，用于会话存储）
+  redis:
+    image: redis:7-alpine
+    container_name: safe-access-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - safe-access-network
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  app-logs:
+    driver: local
+
+networks:
+  safe-access-network:
+    driver: bridge
