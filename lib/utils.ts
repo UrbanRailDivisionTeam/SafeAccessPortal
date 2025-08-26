@@ -60,7 +60,7 @@ export const validateFutureDate = (dateString: string): boolean => {
   const inputDate = new Date(dateString);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return inputDate > today;
+  return inputDate >= today; // 允许当天开工
 };
 
 // 格式化日期
@@ -161,7 +161,7 @@ export const validateForm = (formData: any): FormErrors => {
   if (!formData.startDate) {
     errors.startDate = '计划开工日期不能为空';
   } else if (!validateFutureDate(formData.startDate)) {
-    errors.startDate = '开工日期必须是未来日期';
+    errors.startDate = '开工日期不能早于今天';
   }
 
   if (!formData.startTime) {
