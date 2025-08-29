@@ -26,6 +26,10 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
           suggestions: result.rows,
           total: result.rows.length
+        }, {
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8'
+          }
         })
       }
       
@@ -72,6 +76,10 @@ export async function GET(request: NextRequest) {
           totalPages: Math.ceil(total / limit),
           hasNext: page * limit < total,
           hasPrev: page > 1
+        }
+      }, {
+        headers: {
+          'Content-Type': 'application/json; charset=utf-8'
         }
       })
     } finally {

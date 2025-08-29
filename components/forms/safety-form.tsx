@@ -44,9 +44,10 @@ import {
 interface SafetyFormProps {
   onSuccess: () => void
   initialData?: Partial<SafeForm>
+  onFillLastRecord?: () => Promise<Partial<SafeForm> | null>
 }
 
-export function SafetyForm({ onSuccess, initialData }: SafetyFormProps) {
+export function SafetyForm({ onSuccess, initialData, onFillLastRecord }: SafetyFormProps) {
   const { user, isOnline } = useApp()
   const { addToast } = useToast()
   const [isLoading, setIsLoading] = useState(false)
@@ -155,6 +156,15 @@ export function SafetyForm({ onSuccess, initialData }: SafetyFormProps) {
   }
 
   const fillLastRecord = async () => {
+    if (!onFillLastRecord) {
+      addToast({
+        type: 'warning',
+        title: '功能不可用',
+        description: '填充功能未正确配置'
+      })
+      return
+    }
+
     if (!user) {
       addToast({
         type: 'warning',
@@ -165,67 +175,27 @@ export function SafetyForm({ onSuccess, initialData }: SafetyFormProps) {
     }
 
     try {
-      const response = await fetch(`/api/safety/user-applications/${user.phoneNumber}?limit=1`)
-      if (response.ok) {
-        const data = await response.json()
-        if (data.length > 0) {
-          const lastRecord = data[0]
-          
-          // 将API返回的中文标签转换为表单需要的原始值
-          const workTypeValue = getWorkTypeValue(lastRecord.workType || '')
-          
-          // 创建转换后的记录数据
-          const convertedData = {
-            // 基本信息
-            name: lastRecord.name,
-            idNumber: lastRecord.idNumber,
-            companyName: lastRecord.companyName,
-            phoneNumber: lastRecord.phoneNumber,
-            
-            // 作业信息（转换为原始值）
-            workLocation: getWorkLocationValue(lastRecord.workLocation || ''),
-            workType: workTypeValue,
-            workContent: getWorkContentValue(workTypeValue, lastRecord.workContent || ''),
-            isProductWork: lastRecord.isProductWork,
-            
-            // 项目信息
-            projectName: lastRecord.projectName,
-            vehicleNumber: lastRecord.vehicleNumber,
-            trackPosition: lastRecord.trackPosition,
-            
-            // 质量返工相关信息
-            workBasis: lastRecord.workBasis,
-            basisNumber: lastRecord.basisNumber,
-            
-            // 危险作业类型（转换为原始值数组）
-            dangerTypes: getDangerTypesValue(lastRecord.dangerTypes || ''),
-            
-            // 通知人信息
-            notifierName: lastRecord.notifierName,
-            notifierNumber: lastRecord.notifierNumber,
-            notifierDepartment: lastRecord.notifierDepartment,
-            
-            // 陪同人员
-            accompanyingCount: lastRecord.accompanyingCount,
-            accompanyingPersons: lastRecord.accompanyingPersons,
-            
-            // 工作时长
-            workingHours: lastRecord.workingHours
-          }
-          
-          setFormData(prev => ({ ...prev, ...convertedData }))
-          addToast({
-            type: 'success',
-            title: '填充成功',
-            description: '已填充上次申请记录（不包括日期）'
-          })
-        } else {
-          addToast({
-            type: 'info',
-            title: '暂无记录',
-            description: '您还没有历史申请记录'
-          })
-        }
+      const data = await onFillLastRecord()
+      if (data) {
+        // 重新设置表单数据，这会触发SmartSearch组件的重新渲染
+        setFormData(prev => ({ 
+          ...prev, 
+          ...data,
+          // 保留当前的日期和时间字段，不覆盖
+          startDate: prev.startDate,
+          startTime: prev.startTime
+        }))
+        addToast({
+          type: 'success',
+          title: '填充成功',
+          description: '已填充上次申请记录（不包括日期）'
+        })
+      } else {
+        addToast({
+          type: 'info',
+          title: '暂无记录',
+          description: '您还没有历史申请记录'
+        })
       }
     } catch (error) {
       console.error('填充上次记录失败:', error)

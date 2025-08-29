@@ -48,6 +48,13 @@ export function SystemManagement() {
   const [projects, setProjects] = useState<Project[]>(() => [])
   const [personnel, setPersonnel] = useState<Personnel[]>(() => [])
   
+  // 添加总数状态 - 用于显示真实的数据总数
+  const [totalCounts, setTotalCounts] = useState({
+    companies: 0,
+    projects: 0,
+    personnel: 0
+  })
+  
   // 搜索状态
   const [searchTerm, setSearchTerm] = useState('')
   
@@ -80,11 +87,18 @@ export function SystemManagement() {
                 const response = await companiesRes.json()
                 // API返回的是{data: [...], pagination: {...}}格式
                 setCompanies(Array.isArray(response.data) ? response.data : [])
+                // 保存真实的总数
+                setTotalCounts(prev => ({
+                  ...prev,
+                  companies: response.pagination?.total || 0
+                }))
               } else {
                 setCompanies([])
+                setTotalCounts(prev => ({ ...prev, companies: 0 }))
               }
             } catch {
               setCompanies([])
+              setTotalCounts(prev => ({ ...prev, companies: 0 }))
             }
             break
           case 'projects':
@@ -94,11 +108,18 @@ export function SystemManagement() {
                 const response = await projectsRes.json()
                 // API返回的是{data: [...], pagination: {...}}格式
                 setProjects(Array.isArray(response.data) ? response.data : [])
+                // 保存真实的总数
+                setTotalCounts(prev => ({
+                  ...prev,
+                  projects: response.pagination?.total || 0
+                }))
               } else {
                 setProjects([])
+                setTotalCounts(prev => ({ ...prev, projects: 0 }))
               }
             } catch {
-              setProjects([])  
+              setProjects([])
+              setTotalCounts(prev => ({ ...prev, projects: 0 }))
             }
             break
           case 'personnel':
@@ -108,11 +129,18 @@ export function SystemManagement() {
                 const response = await personnelRes.json()
                 // API返回的是{data: [...], pagination: {...}}格式
                 setPersonnel(Array.isArray(response.data) ? response.data : [])
+                // 保存真实的总数
+                setTotalCounts(prev => ({
+                  ...prev,
+                  personnel: response.pagination?.total || 0
+                }))
               } else {
                 setPersonnel([])
+                setTotalCounts(prev => ({ ...prev, personnel: 0 }))
               }
             } catch {
               setPersonnel([])
+              setTotalCounts(prev => ({ ...prev, personnel: 0 }))
             }
             break
         }
@@ -149,6 +177,13 @@ export function SystemManagement() {
         setCompanies(companiesData)
         setProjects(projectsData)
         setPersonnel(personnelData)
+        
+        // 离线模式下，总数等于实际数据长度
+        setTotalCounts({
+          companies: companiesData.length,
+          projects: projectsData.length,
+          personnel: personnelData.length
+        })
       }
     } catch (error) {
       console.error('加载数据失败:', error)
@@ -758,6 +793,54 @@ export function SystemManagement() {
         </CardHeader>
 
         <CardContent>
+          {/* 数据统计卡片 */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-600">公司总数</p>
+                  <p className="text-2xl font-bold text-blue-900">{totalCounts.companies.toLocaleString()}</p>
+                  <p className="text-xs text-blue-500 mt-1">
+                    {isOnline ? '在线数据' : '离线数据'} • 显示前1000条
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-blue-200 rounded-lg flex items-center justify-center">
+                  <BuildingOfficeIcon className="h-6 w-6 text-blue-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-600">项目总数</p>
+                  <p className="text-2xl font-bold text-green-900">{totalCounts.projects.toLocaleString()}</p>
+                  <p className="text-xs text-green-500 mt-1">
+                    {isOnline ? '在线数据' : '离线数据'} • 显示前1000条
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-green-200 rounded-lg flex items-center justify-center">
+                  <BriefcaseIcon className="h-6 w-6 text-green-600" />
+                </div>
+              </div>
+            </div>
+            
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-600">人员总数</p>
+                  <p className="text-2xl font-bold text-purple-900">{totalCounts.personnel.toLocaleString()}</p>
+                  <p className="text-xs text-purple-500 mt-1">
+                    {isOnline ? '在线数据' : '离线数据'} • 显示前1000条
+                  </p>
+                </div>
+                <div className="w-12 h-12 bg-purple-200 rounded-lg flex items-center justify-center">
+                  <UserGroupIcon className="h-6 w-6 text-purple-600" />
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* 搜索和操作 */}
           <div className="flex items-center justify-between mb-6">
             <div className="relative flex-1 max-w-md">

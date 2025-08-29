@@ -82,6 +82,11 @@ export function SmartSearch({
     }
   }, [apiEndpoint])
 
+  // 同步外部value到内部inputValue
+  useEffect(() => {
+    setInputValue(value)
+  }, [value])
+
   // 保存搜索历史到本地存储
   const saveToHistory = useCallback((searchTerm: string) => {
     if (searchTerm.length < minSearchLength) return

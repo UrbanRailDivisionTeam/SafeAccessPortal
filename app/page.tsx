@@ -17,6 +17,13 @@ import {
   Cog6ToothIcon
 } from '@heroicons/react/24/outline'
 import Link from 'next/link'
+import { 
+  getWorkTypeValue, 
+  getWorkLocationValue, 
+  getWorkContentValue, 
+  getDangerTypesValue 
+} from '@/lib/utils'
+import { SafeForm } from '@/types'
 
 type ViewType = 'home' | 'login' | 'form' | 'history' | 'qr'
 
@@ -25,6 +32,69 @@ export default function HomePage() {
   const [currentView, setCurrentView] = useState<ViewType>('home')
   const [showQR, setShowQR] = useState(false)
   const [historyData, setHistoryData] = useState<any>(null)
+
+  // 填充上次记录的回调函数
+  const handleFillLastRecord = async (): Promise<Partial<SafeForm> | null> => {
+    if (!user) {
+      throw new Error('用户未登录')
+    }
+
+    const response = await fetch(`/api/safety/user-applications/${user.phoneNumber}?limit=1`)
+    if (!response.ok) {
+      throw new Error('获取历史记录失败')
+    }
+
+    const data = await response.json()
+    if (data.length === 0) {
+      return null
+    }
+
+    const lastRecord = data[0]
+    
+    // 将API返回的中文标签转换为表单需要的原始值
+    const workTypeValue = getWorkTypeValue(lastRecord.workType || '')
+    
+    // 创建转换后的记录数据
+    const convertedData: Partial<SafeForm> = {
+      // 基本信息
+      name: lastRecord.name,
+      idNumber: lastRecord.idNumber,
+      companyName: lastRecord.companyName || lastRecord.work_company, // 兼容数据库字段名
+      phoneNumber: lastRecord.phoneNumber,
+      
+      // 作业信息（转换为原始值）
+      workLocation: getWorkLocationValue(lastRecord.workLocation || ''),
+      workType: workTypeValue,
+      workContent: getWorkContentValue(workTypeValue, lastRecord.workContent || ''),
+      isProductWork: lastRecord.isProductWork,
+      
+      // 项目信息
+      projectName: lastRecord.projectName,
+      vehicleNumber: lastRecord.vehicleNumber,
+      trackPosition: lastRecord.trackPosition,
+      
+      // 质量返工相关信息
+      workBasis: lastRecord.workBasis,
+      basisNumber: lastRecord.basisNumber,
+      
+      // 危险作业类型（转换为原始值数组）
+      dangerTypes: getDangerTypesValue(lastRecord.dangerTypes || ''),
+      
+      // 通知人信息
+      notifierName: lastRecord.notifierName || lastRecord.notifier_name, // 兼容数据库字段名
+      notifierNumber: lastRecord.notifierNumber || lastRecord.notifier_number,
+      notifierDepartment: lastRecord.notifierDepartment || lastRecord.notifier_department,
+      
+      // 陪同人员
+      accompanyingCount: lastRecord.accompanyingCount,
+      accompanyingPersons: lastRecord.accompanyingPersons,
+      
+      // 工作时长
+      workingHours: lastRecord.workingHours
+    }
+    
+    return convertedData
+  }
 
   // 根据用户状态决定默认视图
   useEffect(() => {
@@ -66,6 +136,7 @@ export default function HomePage() {
                 setHistoryData(null)
               }} 
               initialData={historyData}
+              onFillLastRecord={handleFillLastRecord}
             />
           </motion.div>
         )

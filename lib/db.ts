@@ -9,6 +9,8 @@ const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+  // 设置字符编码为UTF-8，确保中文字符正确显示
+  options: '-c client_encoding=UTF8'
 });
 
 export default pool;
